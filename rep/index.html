@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#05060c">
+<meta name="description" content="SortDocAI trie automatiquement vos fichiers par intelligence artificielle. Dossiers créés, fichiers renommés intelligemment. Gratuit, privé, local.">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="SortDocAI — Vos fichiers, triés par IA">
+<meta property="og:description" content="Glissez vos documents, images, code et PDF. L'IA crée les dossiers et renomme tout automatiquement.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sortdocai.com">
+<link rel="canonical" href="https://sortdocai.com">
+<title>SortDocAI — Vos fichiers, triés intelligemment par IA</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #05060c;
+    --bg-surface: #0a0c16;
+    --bg-card: #0e111e;
+    --bg-hover: #141829;
+    --border: rgba(120,200,255,0.10);
+    --border-act: rgba(46,230,222,0.45);
+    --text-1: #f1f6ff;
+    --text-2: #b9c4dd;
+    --text-3: #7c87a8;
+    --accent: #2ee6de;
+    --accent-2: #6b8cff;
+    --accent-glow: rgba(46,230,222,0.13);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text-1);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  /* ── CANVAS PARTICLES ── */
+  #bg-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── GRAIN ── */
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 128px;
+  }
+
+  .page { position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 2rem;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    background: rgba(5,6,12,0.7);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-family: 'Chakra Petch', monospace;
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: .02em;
+    color: var(--text-1);
+    text-decoration: none;
+  }
+
+  .logo-icon {
+    color: var(--accent);
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+
+  .logo em { color: var(--accent); font-style: normal; }
+
+  .header-cta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .btn-ghost {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    text-decoration: none;
+    padding: .5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: color .2s, border-color .2s;
+  }
+  .btn-ghost:hover { color: var(--accent); border-color: var(--border-act); }
+
+  .btn-primary {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #05060c;
+    background: var(--accent);
+    text-decoration: none;
+    padding: .55rem 1.25rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    transition: opacity .2s, transform .15s;
+    display: inline-block;
+  }
+  .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 7rem 2rem 5rem;
+    text-align: center;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    font-family: 'Chakra Petch', monospace;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid rgba(46,230,222,.3);
+    background: rgba(46,230,222,.06);
+    padding: .35rem .9rem;
+    border-radius: 100px;
+    margin-bottom: 2rem;
+  }
+  .badge-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(.7); }
+  }
+
+  .hero-title {
+    font-family: 'Chakra Petch', monospace;
+    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -.01em;
+    margin-bottom: 1.5rem;
+  }
+  .hero-title em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .hero-sub {
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: var(--text-2);
+    max-width: 580px;
+    margin: 0 auto 2.5rem;
+    line-height: 1.7;
+  }
+
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 3rem;
+  }
+
+  .btn-hero {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .9rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #05060c;
+    background: var(--accent);
+    text-decoration: none;
+    padding: .85rem 2rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    transition: opacity .2s, transform .15s, box-shadow .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    box-shadow: 0 0 28px rgba(46,230,222,.25);
+  }
+  .btn-hero:hover { opacity: .9; transform: translateY(-2px); box-shadow: 0 0 40px rgba(46,230,222,.4); }
+
+  .btn-hero-ghost {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .9rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    text-decoration: none;
+    padding: .85rem 2rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    transition: color .2s, border-color .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .btn-hero-ghost:hover { color: var(--text-1); border-color: rgba(120,200,255,.3); }
+
+  .hero-privacy {
+    font-size: .8rem;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+  }
+
+  /* ── DEMO WINDOW ── */
+  .demo-wrap {
+    max-width: 760px;
+    margin: 0 auto 6rem;
+    padding: 0 2rem;
+  }
+
+  .demo-window {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(46,230,222,.05), 0 40px 80px rgba(0,0,0,.6);
+  }
+
+  .demo-bar {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .7rem 1rem;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .demo-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .demo-dot.r { background: #ff5f57; }
+  .demo-dot.y { background: #febc2e; }
+  .demo-dot.g { background: #28c840; }
+  .demo-url {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .25rem .8rem;
+    font-family: 'Chakra Petch', monospace;
+    font-size: .7rem;
+    color: var(--text-3);
+    letter-spacing: .04em;
+    margin: 0 .5rem;
+  }
+
+  .demo-body {
+    padding: 2rem;
+    min-height: 280px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  .demo-col-label {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: .75rem;
+  }
+
+  .file-pile {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .45rem .7rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: .78rem;
+    color: var(--text-2);
+    animation: fadein .4s ease both;
+  }
+  .file-item:nth-child(2) { animation-delay: .1s; }
+  .file-item:nth-child(3) { animation-delay: .2s; }
+  .file-item:nth-child(4) { animation-delay: .3s; }
+  .file-item:nth-child(5) { animation-delay: .4s; }
+
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .file-icon { font-size: .95rem; }
+  .file-name { font-family: 'Chakra Petch', monospace; font-size: .7rem; letter-spacing: .02em; }
+
+  .tree {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+  }
+
+  .tree-folder {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .04em;
+    padding: .3rem 0 .1rem;
+  }
+
+  .tree-file {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem .5rem .3rem 1.2rem;
+    font-size: .72rem;
+    font-family: 'Chakra Petch', monospace;
+    color: var(--text-2);
+    border-left: 1px solid rgba(46,230,222,.2);
+    animation: fadein .5s ease both;
+  }
+  .tree-file:nth-child(even) { animation-delay: .2s; }
+
+  .demo-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--accent);
+    opacity: .7;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+  }
+
+  .demo-center {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-pill {
+    position: absolute;
+    background: rgba(46,230,222,.08);
+    border: 1px solid rgba(46,230,222,.3);
+    border-radius: 100px;
+    padding: .35rem .8rem;
+    font-family: 'Chakra Petch', monospace;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 5rem 2rem;
+  }
+
+  .section-label {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .section-title {
+    font-family: 'Chakra Petch', monospace;
+    font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 3.5rem;
+    color: var(--text-1);
+  }
+  .section-title em { font-style: normal; color: var(--accent); }
+
+  /* ── STEPS ── */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  @media (max-width: 700px) {
+    .steps { grid-template-columns: 1fr; }
+    .demo-body { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+  }
+
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.75rem 1.5rem;
+    position: relative;
+    transition: border-color .25s, transform .25s;
+  }
+  .step-card:hover { border-color: rgba(46,230,222,.25); transform: translateY(-2px); }
+
+  .step-num {
+    font-family: 'Chakra Petch', monospace;
+    font-size: 2rem;
+    font-weight: 700;
+    color: rgba(46,230,222,.15);
+    line-height: 1;
+    margin-bottom: .75rem;
+  }
+
+  .step-icon {
+    font-size: 1.6rem;
+    margin-bottom: .75rem;
+    display: block;
+  }
+
+  .step-title {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .95rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    margin-bottom: .5rem;
+    color: var(--text-1);
+  }
+
+  .step-desc {
+    font-size: .85rem;
+    color: var(--text-2);
+    line-height: 1.65;
+  }
+
+  /* ── FEATURES ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  .feat-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    transition: border-color .2s;
+  }
+  .feat-card:hover { border-color: rgba(46,230,222,.2); }
+
+  .feat-icon {
+    font-size: 1.3rem;
+    margin-bottom: .75rem;
+    display: block;
+  }
+
+  .feat-title {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .85rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    margin-bottom: .4rem;
+    color: var(--text-1);
+  }
+
+  .feat-desc {
+    font-size: .8rem;
+    color: var(--text-3);
+    line-height: 1.6;
+  }
+
+  /* ── STATS ── */
+  .stats-section {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 3.5rem 2rem;
+  }
+
+  .stats-row {
+    max-width: 900px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: 'Chakra Petch', monospace;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: .4rem;
+  }
+
+  .stat-label {
+    font-size: .8rem;
+    color: var(--text-3);
+    letter-spacing: .04em;
+  }
+
+  /* ── FORMATS ── */
+  .formats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    justify-content: center;
+    margin-top: 2.5rem;
+  }
+
+  .fmt-tag {
+    font-family: 'Chakra Petch', monospace;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: .35rem .8rem;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    background: var(--bg-surface);
+    transition: color .2s, border-color .2s;
+  }
+  .fmt-tag:hover { color: var(--accent); border-color: rgba(46,230,222,.35); }
+
+  /* ── CTA SECTION ── */
+  .cta-section {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 6rem 2rem 7rem;
+    text-align: center;
+  }
+
+  .cta-title {
+    font-family: 'Chakra Petch', monospace;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 1.25rem;
+  }
+  .cta-title em { font-style: normal; color: var(--accent); }
+
+  .cta-sub {
+    color: var(--text-2);
+    font-size: 1rem;
+    margin-bottom: 2.5rem;
+    font-weight: 300;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .footer-logo {
+    font-family: 'Chakra Petch', monospace;
+    font-weight: 700;
+    font-size: .9rem;
+    color: var(--text-2);
+  }
+  .footer-logo em { color: var(--accent); font-style: normal; }
+
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+  }
+  .footer-links a {
+    font-size: .8rem;
+    color: var(--text-3);
+    text-decoration: none;
+    transition: color .2s;
+  }
+  .footer-links a:hover { color: var(--text-2); }
+
+  .footer-copy {
+    font-size: .75rem;
+    color: var(--text-3);
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="grain"></div>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="header">
+    <a class="logo" href="#">
+      <span class="logo-icon">⬡</span>
+      <span>Sort<em>DocAI</em></span>
+    </a>
+    <div class="header-cta">
+      <a class="btn-ghost" href="#comment">Comment ça marche</a>
+      <a class="btn-primary" href="https://app.sortdocai.com">Essayer gratuitement →</a>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      IA locale · Aucune donnée partagée
+    </div>
+    <h1 class="hero-title">Vos fichiers,<br><em>triés intelligemment.</em></h1>
+    <p class="hero-sub">Glissez vos documents, images, code et PDF. L'IA analyse, crée les dossiers et renomme tout automatiquement — en quelques secondes.</p>
+    <div class="hero-actions">
+      <a class="btn-hero" href="https://app.sortdocai.com">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        Trier mes fichiers
+      </a>
+      <a class="btn-hero-ghost" href="#comment">
+        Voir comment ça marche
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+    <p class="hero-privacy">🔒 Analyse locale au serveur &nbsp;·&nbsp; Fichiers supprimés après traitement &nbsp;·&nbsp; Aucun partage tiers</p>
+  </section>
+
+  <!-- DEMO WINDOW -->
+  <div class="demo-wrap">
+    <div class="demo-window">
+      <div class="demo-bar">
+        <span class="demo-dot r"></span>
+        <span class="demo-dot y"></span>
+        <span class="demo-dot g"></span>
+        <span class="demo-url">app.sortdocai.com</span>
+      </div>
+      <div class="demo-body">
+        <div>
+          <div class="demo-col-label">📂 Avant — fichiers en vrac</div>
+          <div class="file-pile">
+            <div class="file-item"><span class="file-icon">📄</span><span class="file-name">IMG_20240312_144522.jpg</span></div>
+            <div class="file-item"><span class="file-icon">📝</span><span class="file-name">document_final_v3.docx</span></div>
+            <div class="file-item"><span class="file-icon">🗒️</span><span class="file-name">notes.txt</span></div>
+            <div class="file-item"><span class="file-icon">📊</span><span class="file-name">budget_copie.xlsx</span></div>
+            <div class="file-item"><span class="file-icon">📸</span><span class="file-name">scan_recu_047.pdf</span></div>
+          </div>
+        </div>
+
+        <div style="position:relative; display:flex; align-items:center; justify-content:center;">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(46,230,222,.7)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+          <span class="ai-pill" style="top:30%; transform:translateX(-50%); left:50%;">IA ⬡</span>
+        </div>
+
+        <div>
+          <div class="demo-col-label">✅ Après — classé et renommé</div>
+          <div class="tree">
+            <div class="tree-folder">📁 Photos/</div>
+            <div class="tree-file">📷 Photo-reunion-mars-2024.jpg</div>
+            <div class="tree-folder">📁 Travail/</div>
+            <div class="tree-file">📝 Rapport-final-2024.docx</div>
+            <div class="tree-file">📊 Budget-annuel.xlsx</div>
+            <div class="tree-folder">📁 Notes/</div>
+            <div class="tree-file">🗒️ Notes-projet.txt</div>
+            <div class="tree-folder">📁 Reçus/</div>
+            <div class="tree-file">🧾 Recu-achat-047.pdf</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-section">
+    <div class="stats-row">
+      <div>
+        <div class="stat-val">1 Go</div>
+        <div class="stat-label">Taille max acceptée</div>
+      </div>
+      <div>
+        <div class="stat-val">20+</div>
+        <div class="stat-label">Formats supportés</div>
+      </div>
+      <div>
+        <div class="stat-val">100%</div>
+        <div class="stat-label">Fichiers supprimés après tri</div>
+      </div>
+      <div>
+        <div class="stat-val">0€</div>
+        <div class="stat-label">Coût pour commencer</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="section" id="comment">
+    <div class="section-label">Fonctionnement</div>
+    <h2 class="section-title">Trois étapes,<br><em>un dossier parfait.</em></h2>
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <span class="step-icon">📤</span>
+        <div class="step-title">Déposez vos fichiers</div>
+        <p class="step-desc">Glissez un ou plusieurs fichiers, ou un dossier entier. Documents, images, code, PDF, archives — jusqu'à 1 Go.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <span class="step-icon">🧠</span>
+        <div class="step-title">L'IA analyse le contenu</div>
+        <p class="step-desc">SortDocAI lit chaque fichier, reconnaît son type et son contenu (OCR inclus), et détermine le meilleur classement.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <span class="step-icon">📦</span>
+        <div class="step-title">Téléchargez le résultat</div>
+        <p class="step-desc">Vos fichiers sont renommés et rangés dans une structure de dossiers claire. Exportez en .zip ou en vault Obsidian.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- FEATURES -->
+  <section class="section">
+    <div class="section-label">Fonctionnalités</div>
+    <h2 class="section-title">Tout ce qu'il faut pour<br><em>ne plus jamais chercher un fichier.</em></h2>
+    <div class="features-grid">
+      <div class="feat-card">
+        <span class="feat-icon">🔍</span>
+        <div class="feat-title">OCR multi-sources</div>
+        <p class="feat-desc">EasyOCR et Tesseract croisés pour lire même les manuscrits et les scans mal numérisés.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">✅</span>
+        <div class="feat-title">Double vérification IA</div>
+        <p class="feat-desc">Un second modèle relit et corrige le classement pour une précision maximale.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">📁</span>
+        <div class="feat-title">Dossier de référence</div>
+        <p class="feat-desc">Importez un dossier existant — les nouveaux fichiers s'y intègrent sans créer de doublons.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🌍</span>
+        <div class="feat-title">12 langues</div>
+        <p class="feat-desc">Noms de dossiers et fichiers générés en français, anglais, espagnol, arabe, japonais, et plus.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🔄</span>
+        <div class="feat-title">Conversion intégrée</div>
+        <p class="feat-desc">Convertissez en PDF, Word ou texte brut au moment du tri — sans outil supplémentaire.</p>
+      </div>
+      <div class="feat-card">
+        <span class="feat-icon">🔗</span>
+        <div class="feat-title">Export Obsidian</div>
+        <p class="feat-desc">Générez directement un vault prêt à l'emploi pour votre base de connaissances personnelle.</p>
+      </div>
+    </div>
+
+    <!-- FORMATS -->
+    <div style="text-align:center; margin-top: 3.5rem;">
+      <p style="font-family:'Chakra Petch',monospace; font-size:.72rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-bottom:1.25rem;">Formats acceptés</p>
+      <div class="formats">
+        <span class="fmt-tag">PDF</span><span class="fmt-tag">DOCX</span><span class="fmt-tag">XLSX</span>
+        <span class="fmt-tag">PPTX</span><span class="fmt-tag">JPG</span><span class="fmt-tag">PNG</span>
+        <span class="fmt-tag">WEBP</span><span class="fmt-tag">MP4</span><span class="fmt-tag">ZIP</span>
+        <span class="fmt-tag">TAR.GZ</span><span class="fmt-tag">PY</span><span class="fmt-tag">JS</span>
+        <span class="fmt-tag">TS</span><span class="fmt-tag">MD</span><span class="fmt-tag">TXT</span>
+        <span class="fmt-tag">CSV</span><span class="fmt-tag">JSON</span><span class="fmt-tag">HTML</span>
+        <span class="fmt-tag">EPUB</span><span class="fmt-tag">ODT</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2 class="cta-title">Prêt à retrouver<br><em>vos fichiers en un instant ?</em></h2>
+    <p class="cta-sub">Gratuit, sans compte requis, fichiers supprimés automatiquement.</p>
+    <a class="btn-hero" href="https://app.sortdocai.com">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      Lancer SortDocAI gratuitement
+    </a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <span class="footer-logo">⬡ Sort<em>DocAI</em></span>
+    <div class="footer-links">
+      <a href="https://app.sortdocai.com/guides">Guides</a>
+      <a href="https://app.sortdocai.com" data-view="legal">Mentions légales</a>
+      <a href="https://app.sortdocai.com" data-view="bug">Contact</a>
+    </div>
+    <span class="footer-copy">© 2025 SortDocAI</span>
+  </footer>
+
+</div><!-- /page -->
+
+<script>
+  /* ── Particles canvas ── */
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function init() {
+    particles = [];
+    const count = Math.floor(W * H / 22000);
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.2 + .2,
+        vx: (Math.random() - .5) * .18,
+        vy: (Math.random() - .5) * .18,
+        a: Math.random() * .5 + .1
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of particles) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(46,230,222,${p.a})`;
+      ctx.fill();
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = W;
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H;
+      if (p.y > H) p.y = 0;
+    }
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  init();
+  draw();
+  window.addEventListener('resize', () => { resize(); init(); });
+
+  /* ── Smooth scroll for anchor links ── */
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const id = a.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+  });
+</script>
+</body>
+</html>
